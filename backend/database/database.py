@@ -2,14 +2,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql://fastapply:fastapi@localhost/FastApplyProject"
+# Строка подключения к базе данных SQLite
+DATABASE_URL = "sqlite:///./sql_app.db"
 
-engine = create_engine(DATABASE_URL)
+# Убедитесь, что `connect_args` используется для SQLite, иначе могут возникнуть проблемы с блокировками
+engine = create_engine(
+    DATABASE_URL, connect_args={"check_same_thread": False}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Dependency
+# Зависимость для получения сессии базы данных
 def get_db():
     db = SessionLocal()
     try:

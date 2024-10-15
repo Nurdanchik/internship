@@ -4,6 +4,7 @@ from database import models, schemas, database
 import os
 import easyocr
 import face_recognition
+import numpy as np  # Import numpy for array handling
 from typing import Optional, List
 
 app = FastAPI()
@@ -19,27 +20,13 @@ def get_db():
     finally:
         db.close()
 
-def save_face_to_db(db: Session, name: str, code: int, encoding: list, image_path: str):
-    # Check if the face is detected
-    if encoding is None:
-        print("No face detected in the image.")
-        return False, "No face detected in the image."
-
-    # Check if a record with the same code already exists
-    existing_face = db.query(models.Face).filter(models.Face.code == code).first()
-    if existing_face:
-        print("Face with this code already exists in the database.")
-        return False, "Face with this code already exists in the database."
-
-    # Create a new Face object
-    new_face = models.Face(code=code, name=name, landmarks=encoding, picture=image_path)
-
-    # Add the new object to the database
-    db.add(new_face)
+def save_face_to_db(db, name, code, encoding, image_path):
+    face = models.Face(name=name, code=code, picture=image_path)
+    face.set_landmarks(encoding)  # Преобразуем список в JSON перед сохранением
+    db.add(face)
     db.commit()
-    db.refresh(new_face)
-
-    return new_face
+    db.refresh(face)
+    return face
 
 def extract_face_encoding(image_path):
     # Load image
@@ -58,8 +45,12 @@ def extract_face_encoding(image_path):
     return face_encodings[0]
 
 def calculate_similarity(encoding1, encoding2):
+    # Convert lists to numpy arrays
+    encoding1_np = np.array(encoding1)
+    encoding2_np = np.array(encoding2)
+    
     # Calculate similarity between two face encodings
-    return face_recognition.face_distance([encoding1], encoding2)[0]
+    return face_recognition.face_distance([encoding1_np], encoding2_np)[0]
 
 # Function to extract a code (like ID) from the image using EasyOCR
 def get_code(image_path):
